@@ -48,7 +48,7 @@ EXERCISE STEPS
   $rm -rf ucore_lab
   $git clone git://github.com/chyyuu/ucore_os_lab.git
   $cd ucore_lab
-0.2 If you gloned ucore_lab and only try to get the updated codes
+0.2 If you cloned ucore_lab and only try to get the updated codes
   $cd ucore_os_lab
   $git pull
 1 $cd labX  
