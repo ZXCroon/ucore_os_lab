@@ -444,7 +444,7 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
 
     if (ptep && *ptep & PTE_P) {
         tlb_invalidate(pgdir, la);
-        uintptr_t pa = PTE_ADDR(ptep);
+        uintptr_t pa = PTE_ADDR(*ptep);
         struct Page *p = pa2page(pa);
         if (page_ref_dec(p) == 0) {
             free_page(p);
