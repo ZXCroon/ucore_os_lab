@@ -60,6 +60,12 @@ free_area_t free_area;
 #define nr_free (free_area.nr_free)
 
 static void
+default_init(void) {
+    list_init(&free_list);
+    nr_free = 0;
+}
+
+static void
 default_init_memmap(struct Page *base, size_t n) {
     assert(n > 0);
     struct Page *p = base;
