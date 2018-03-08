@@ -306,19 +306,24 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
 
     proc = alloc_proc();
     if (proc == NULL) {
-      goto fork_out;
+        goto fork_out;
     }
+    proc->parent = current;
 
     if (setup_kstack(proc) != 0) {
-      goto bad_fork_cleanup_proc;
+        goto bad_fork_cleanup_proc;
     }
 
     if (copy_mm(clone_flags, proc) != 0) {
-      goto bad_fork_cleanup_kstack;
+        goto bad_fork_cleanup_kstack;
     }
 
     copy_thread(proc, 0, tf);
+    proc->pid = get_pid();
     hash_proc(proc);
+    list_add(&proc_list, &(proc->list_link));
+    ++nr_process;
+
     wakeup_proc(proc);
     ret = proc->pid;
 
