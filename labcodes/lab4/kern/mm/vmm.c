@@ -343,7 +343,6 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
 
     ret = -E_NO_MEM;
 
-    pte_t *ptep=NULL;
     /*LAB3 EXERCISE 1: YOUR CODE
     * Maybe you want help comment, BELOW comments can help you finish the code
     *
@@ -393,7 +392,26 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
         }
    }
 #endif
-   ret = 0;
+
+    pte_t *ptep = get_pte(mm->pgdir, addr, 0);
+    struct Page *page;
+    if (*ptep == 0) {
+        page = pgdir_alloc_page(mm->pgdir, addr, perm);
+    }
+    else {
+        if (swap_init_ok) {
+            swap_in(mm, addr, &page);
+            page_insert(mm->pgdir, page, addr, perm);
+            swap_map_swappable(mm, addr, page, 0);
+            page->pra_vaddr = addr;
+        }
+        else {
+            cprintf("no swap_init_ok but ptep is %x, failed\n",*ptep);
+            goto failed;
+        }
+    }
+
+    ret = 0;
 failed:
     return ret;
 }
