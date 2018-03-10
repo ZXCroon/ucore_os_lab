@@ -422,8 +422,8 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
     copy_thread(proc, stack, tf);
     proc->pid = get_pid();
     hash_proc(proc);
-    list_add(&proc_list, &(proc->list_link));
-    ++nr_process;
+    //list_add(&proc_list, &(proc->list_link));
+    //++nr_process;
 
     wakeup_proc(proc);
     ret = proc->pid;
