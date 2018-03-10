@@ -55,8 +55,8 @@ idt_init(void) {
       */
     extern uintptr_t __vectors[];
     int i;
-    for (i = 0; i < sizeof(idt) / sizeof(struct gatedesc); i ++) {
-        SETGATE(idt[i], 0, GD_KTEXT, __vectors[i], DPL_KERNEL);
+    for (i = 0; i < 256; ++i) {
+        SETGATE(idt[i], 0, 0x8, __vectors[i], (i == T_SYSCALL ? 3 : 0));
     }
     lidt(&idt_pd);
 
