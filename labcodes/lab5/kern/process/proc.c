@@ -105,6 +105,7 @@ alloc_proc(void) {
      */
 
         memset(proc, 0, sizeof(struct proc_struct));
+        memset(proc->name, 0, PROC_NAME_LEN);
         proc->state = PROC_UNINIT;
         proc->pid = -1;
 
@@ -418,7 +419,7 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
         goto bad_fork_cleanup_kstack;
     }
 
-    copy_thread(proc, 0, tf);
+    copy_thread(proc, stack, tf);
     proc->pid = get_pid();
     hash_proc(proc);
     list_add(&proc_list, &(proc->list_link));
@@ -434,6 +435,9 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
     *    update step 1: set child proc's parent to current process, make sure current process's wait_state is 0
     *    update step 5: insert proc_struct into hash_list && proc_list, set the relation links of process
     */
+
+    assert(current->wait_state == 0);
+    set_links(proc);
 
 fork_out:
     return ret;
@@ -633,6 +637,13 @@ load_icode(unsigned char *binary, size_t size) {
      *          tf_eip should be the entry point of this binary program (elf->e_entry)
      *          tf_eflags should be set to enable computer to produce Interrupt
      */
+
+    tf->tf_cs = USER_CS;
+    tf->tf_ds = tf->tf_es = tf->tf_ss = USER_DS;
+    tf->tf_esp = USTACKTOP;
+    tf->tf_eip = elf->e_entry;
+    tf->tf_eflags = FL_IF;
+
     ret = 0;
 out:
     return ret;

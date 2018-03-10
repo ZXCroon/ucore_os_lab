@@ -550,7 +550,7 @@ copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end, bool share) {
          */
 
         nptep = get_pte(to, start, 0);
-        page_insert(to, npage, start, perm);
+        ret = page_insert(to, npage, start, perm);
         memcpy(page2kva(npage), page2kva(page), PGSIZE);
         assert(ret == 0);
         }
