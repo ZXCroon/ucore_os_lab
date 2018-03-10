@@ -56,7 +56,7 @@ idt_init(void) {
     extern uintptr_t __vectors[];
     int i;
     for (i = 0; i < 256; ++i) {
-        SETGATE(idt[i], 0, 0x8, __vectors[i], (i == T_SYSCALL ? 3 : 0));
+        SETGATE(idt[i], (i == T_SYSCALL ? 1 : 0), 0x8, __vectors[i], (i == T_SYSCALL ? 3 : 0));
     }
     lidt(&idt_pd);
 
