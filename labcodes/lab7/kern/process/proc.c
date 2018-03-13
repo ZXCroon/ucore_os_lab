@@ -103,6 +103,15 @@ alloc_proc(void) {
      *       uint32_t flags;                             // Process flag
      *       char name[PROC_NAME_LEN + 1];               // Process name
      */
+
+        memset(proc, 0, sizeof(struct proc_struct));
+        memset(proc->name, 0, PROC_NAME_LEN);
+        proc->state = PROC_UNINIT;
+        proc->pid = -1;
+
+        extern uintptr_t boot_cr3;
+        proc->cr3 = boot_cr3;
+
      //LAB5 YOUR CODE : (update LAB4 steps)
     /*
      * below fields(add in LAB5) in proc_struct need to be initialized	
@@ -406,13 +415,39 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
     //    6. call wakeup_proc to make the new child process RUNNABLE
     //    7. set ret vaule using child proc's pid
 
-	//LAB5 YOUR CODE : (update LAB4 steps)
+    proc = alloc_proc();
+    if (proc == NULL) {
+        goto fork_out;
+    }
+    proc->parent = current;
+
+    if (setup_kstack(proc) != 0) {
+        goto bad_fork_cleanup_proc;
+    }
+
+    if (copy_mm(clone_flags, proc) != 0) {
+        goto bad_fork_cleanup_kstack;
+    }
+
+    copy_thread(proc, stack, tf);
+    proc->pid = get_pid();
+    hash_proc(proc);
+    //list_add(&proc_list, &(proc->list_link));
+    //++nr_process;
+
+    wakeup_proc(proc);
+    ret = proc->pid;
+
+    //LAB5 YOUR CODE : (update LAB4 steps)
    /* Some Functions
     *    set_links:  set the relation links of process.  ALSO SEE: remove_links:  lean the relation links of process 
     *    -------------------
-	*    update step 1: set child proc's parent to current process, make sure current process's wait_state is 0
-	*    update step 5: insert proc_struct into hash_list && proc_list, set the relation links of process
+    *    update step 1: set child proc's parent to current process, make sure current process's wait_state is 0
+    *    update step 5: insert proc_struct into hash_list && proc_list, set the relation links of process
     */
+
+    assert(current->wait_state == 0);
+    set_links(proc);
 	
 fork_out:
     return ret;
@@ -612,6 +647,13 @@ load_icode(unsigned char *binary, size_t size) {
      *          tf_eip should be the entry point of this binary program (elf->e_entry)
      *          tf_eflags should be set to enable computer to produce Interrupt
      */
+
+    tf->tf_cs = USER_CS;
+    tf->tf_ds = tf->tf_es = tf->tf_ss = USER_DS;
+    tf->tf_esp = USTACKTOP;
+    tf->tf_eip = elf->e_entry;
+    tf->tf_eflags = FL_IF;
+
     ret = 0;
 out:
     return ret;
