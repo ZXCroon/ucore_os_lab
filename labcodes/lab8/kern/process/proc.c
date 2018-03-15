@@ -629,7 +629,6 @@ load_icode(int fd, int argc, char **kargv) {
     struct Page *page;
     struct elfhdr _elfhdr;
     struct elfhdr *elf = &_elfhdr;
-    unsigned char *binary = (unsigned char *)elf;
     load_icode_read(fd, elf, sizeof(struct elfhdr), 0);
 
     if (elf->e_magic != ELF_MAGIC) {
@@ -637,12 +636,12 @@ load_icode(int fd, int argc, char **kargv) {
         goto bad_elf_cleanup_pgdir;
     }
 
-    uint32_t vm_flags, perm;
+    uint32_t vm_flags, perm, phnum;
     struct proghdr _proghdr;
     struct proghdr *ph = &_proghdr;
     struct proghdr *ph_end = ph + elf->e_phnum;
     off_t phoff = elf->e_phoff;
-    for (; ph < ph_end; ph ++, phoff += sizeof(struct proghdr)) {
+    for (phnum = 0; phnum < elf->e_phnum; phnum ++, phoff += sizeof(struct proghdr)) {
         load_icode_read(fd, ph, sizeof(struct proghdr), phoff);
         if (ph->p_type != ELF_PT_LOAD) {
             continue ;
@@ -662,7 +661,7 @@ load_icode(int fd, int argc, char **kargv) {
         if ((ret = mm_map(mm, ph->p_va, ph->p_memsz, vm_flags, NULL)) != 0) {
             goto bad_cleanup_mmap;
         }
-        unsigned char *from = binary + ph->p_offset;
+        off_t offset = ph->p_offset;
         size_t off, size;
         uintptr_t start = ph->p_va, end, la = ROUNDDOWN(start, PGSIZE);
 
@@ -677,8 +676,8 @@ load_icode(int fd, int argc, char **kargv) {
             if (end < la) {
                 size -= la - end;
             }
-            memcpy(page2kva(page) + off, from, size);
-            start += size, from += size;
+            load_icode_read(fd, page2kva(page) + off, size, offset);
+            start += size, offset += size;
         }
 
         end = ph->p_va + ph->p_memsz;
