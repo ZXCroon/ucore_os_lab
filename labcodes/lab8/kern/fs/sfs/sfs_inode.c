@@ -554,7 +554,7 @@ sfs_io_nolock(struct sfs_fs *sfs, struct sfs_inode *sin, void *buf, off_t offset
     struct sfs_disk_inode *din = sin->din;
     assert(din->type != SFS_TYPE_DIR);
     off_t endpos = offset + *alenp, blkoff;
-    *alenp = 0;
+    //*alenp = 0;
 	// calculate the Rd/Wr end position
     if (offset < 0 || offset >= SFS_MAX_FILE_SIZE || offset > endpos) {
         return -E_INVAL;
@@ -586,8 +586,10 @@ sfs_io_nolock(struct sfs_fs *sfs, struct sfs_inode *sin, void *buf, off_t offset
     int ret = 0;
     size_t size, alen = 0;
     uint32_t ino;
+    /*
     uint32_t blkno = offset / SFS_BLKSIZE;          // The NO. of Rd/Wr begin block
     uint32_t nblks = endpos / SFS_BLKSIZE - blkno;  // The size of Rd/Wr blocks
+    */
 
   //LAB8:EXERCISE1 YOUR CODE HINT: call sfs_bmap_load_nolock, sfs_rbuf, sfs_rblock,etc. read different kind of blocks in file
 	/*
@@ -600,23 +602,39 @@ sfs_io_nolock(struct sfs_fs *sfs, struct sfs_inode *sin, void *buf, off_t offset
 	 *       NOTICE: useful function: sfs_bmap_load_nolock, sfs_buf_op	
 	*/
 
-    uint32_t headno, tailno;
-    sfs_bmap_load_nolock(sfs, sin, blkno, &headno);
-    sfs_bmap_load_nolock(sfs, sin, blkno + nblks - 1, &tailno);
     blkoff = offset % SFS_BLKSIZE;
+    uint32_t first_blk = offset / SFS_BLKSIZE + (blkoff == 0 ? 0 : 1);
+    uint32_t last_blk = endpos / SFS_BLKSIZE - 1;
+    uint32_t nblks = last_blk - first_blk + 1;
+    uint32_t headlen = (SFS_BLKSIZE - blkoff) % SFS_BLKSIZE;
+    uint32_t taillen = endpos % SFS_BLKSIZE;
 
-    if (nblks > 0) {
-        uint32_t headlen = SFS_BLKSIZE - blkoff;
-        sfs_buf_op(sfs, buf, headlen, headno, blkoff);
-        sfs_block_op(sfs, buf + headlen, blkno - 1, nblks - 1);
-        sfs_buf_op(sfs, buf + headlen + (blkno - 1) * SFS_BLKSIZE, endpos % SFS_BLKSIZE, tailno, 0);
+    if (offset / SFS_BLKSIZE == (endpos - 1) / SFS_BLKSIZE) {
+        sfs_bmap_load_nolock(sfs, sin, offset / SFS_BLKSIZE, &ino);
+        sfs_buf_op(sfs, buf, *alenp, ino, blkoff);
     }
     else {
-        sfs_buf_op(sfs, buf, *alenp, headno, blkoff);
+        if (headlen > 0) {
+            sfs_bmap_load_nolock(sfs, sin, first_blk - 1, &ino);
+            sfs_buf_op(sfs, buf, headlen, ino, blkoff);
+            buf += headlen;
+        }
+
+        uint32_t blkno = first_blk;
+        for (; blkno <= last_blk; ++blkno) {
+            sfs_bmap_load_nolock(sfs, sin, blkno, &ino);
+            sfs_block_op(sfs, buf, ino, 1);
+            buf += SFS_BLKSIZE;
+        }
+
+        if (taillen > 0) {
+            sfs_bmap_load_nolock(sfs, sin, last_blk + 1, &ino);
+            sfs_buf_op(sfs, buf, taillen, ino, 0);
+        }
     }
 
 out:
-    *alenp = alen;
+    //*alenp = alen;
     if (offset + alen > sin->din->size) {
         sin->din->size = offset + alen;
         sin->dirty = 1;
